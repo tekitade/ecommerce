@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+    <apikit:config name="walia-ecommerce-config" api="resource::0803abe7-b1fe-478b-beb1-297c994ca040:walia-ecommerce:1.0.0:raml:zip:walia-ecommerce.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+	<flow name="walia-ecommerce-main">
+        <http:listener path="/api/*" config-ref="walia-ecommerce-httpListenerConfig">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="walia-ecommerce-config" />
+        <error-handler>
+			<on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+			<on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+			<on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+			<on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+			<on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+			<on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="walia-ecommerce-console">
+        <http:listener path="/console/*" config-ref="walia-ecommerce-httpListenerConfig">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="walia-ecommerce-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform doc:name="Transform Message">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="delete:\customers\(customer_id):walia-ecommerce-config">
+		<ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="customer_id">attributes.uriParams.'customer_id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "The customer deleted successfully!"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="delete:\products\(product_id):walia-ecommerce-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="product_id">attributes.uriParams.'product_id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Flow Reference" doc:id="34fa1bd1-fffa-484c-b7c5-b7107ee1b65f" name="walia-ecommerce-product-delete"/>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "The product deleted successfully!"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="patch:\customers\(customer_id):application\json:walia-ecommerce-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="customer_id">attributes.uriParams.'customer_id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "The customer updated successfully!"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="patch:\products\(product_id):application\json:walia-ecommerce-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="product_id">attributes.uriParams.'product_id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Flow Reference" doc:id="72abeb77-c8ab-45dc-9b90-0ece36d7bc7f" name="walia-ecommerce-product-update"/>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "The product updated successfully!"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\customers:walia-ecommerce-config">
+        <db:select doc:name="Select" doc:id="bb3d3983-f422-45e9-acc1-caa22c6b11d8" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[select * from users;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\products:walia-ecommerce-config">
+        <flow-ref doc:name="Flow Reference" doc:id="fea9f486-25fe-446a-9bf9-dc4addce73d9" name="walia-ecommerce-product-retrieve"/>
+    </flow>
+    <flow name="get:\customers\(customer_id):walia-ecommerce-config">
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="customer_id">attributes.uriParams.'customer_id'</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  first_name: "Abebe",
+  last_name: "Kebede",
+  user_name: "abebe.kebede",
+  password: "5f4dcc3b5aa765d61d8327deb882cf99",
+  birth_date: "1990-01-01",
+  phone: "+251912345678",
+  email: "abebe.kebede@example.com",
+  address: "Addis Ababa",
+  role: "user",
+  points: 0
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\products\(product_id):walia-ecommerce-config">
+        <set-variable value="#[attributes.uriParams.product_id]" doc:name="Set Variable" doc:id="cfdd01c2-1adb-4762-96b3-866687194d5e" variableName="product_id"/>
+        <flow-ref doc:name="Flow Reference" doc:id="6f624f01-8dc2-4482-aa91-6ca9ca56bb5c" name="walia-ecommerce-product-retrive-specific-products"/>
+    </flow>
+    <flow name="post:\login:application\json:walia-ecommerce-config">
+        <flow-ref doc:name="Flow Reference" doc:id="2a73cbdd-9d9d-4b79-ad2b-45ea486d62e2" name="walia-ecommerce-users-login"/>
+    </flow>
+    <flow name="post:\products:application\json:walia-ecommerce-config">
+        <ee:transform doc:name="Transform Message" doc:id="9315b925-cd2a-4f75-b0c1-e1bdd8b585fd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="d5b4e8de-c323-4035-8061-c09474d2b7bd" name="walia-ecommerce-product-creation"/>
+    </flow>
+    <flow name="post:\register:application\json:walia-ecommerce-config">
+		<set-variable value="#[payload.email]" doc:name="Set Variable" doc:id="8ff05726-f59b-4de9-8352-e0fcd026edbd" variableName="email"/>
+		<flow-ref doc:name="Flow Reference" doc:id="7f4bc144-8f81-4c70-8895-0c18148b7c54" name="walia-ecommerce-users-registration"/>
+		<async doc:name="Async" doc:id="50845427-0793-42e9-a45b-d84cd8fb404e" >
+			<email:send doc:name="Send" doc:id="ce112548-255a-4607-aeca-57be9fdcb17a" config-ref="Email_SMTP" fromAddress="craftsoft.knowledge@gmail.com" subject="Walia Ecommerce Registration">
+				<email:to-addresses >
+					<email:to-address value="#[vars.email]" />
+				</email:to-addresses>
+				<email:body contentType="text/plain" >
+					<email:content ><![CDATA[Thanks for signup to our ecommerce site.]]></email:content>
+				</email:body>
+			</email:send>
+		</async>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Congratulations! Registered successfully!"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+	<flow name="walia-ecommerce-orders" doc:id="4ec4e094-3974-428c-b18d-d89f892c06f2" >
+		<http:listener doc:name="Listener" doc:id="0fd3d8ea-3bfc-49d6-b457-23ff2429f103" config-ref="walia-ecommerce-httpListenerConfig" path="/api/orders" allowedMethods="POST"/>
+		<ee:transform doc:name="Transform Message" doc:id="7837ded3-1711-4152-ab68-ff8c271610e9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"user_id": attributes.queryParams.user_id,
+	"order_date": now() as String {format: "yyyy-MM-dd"},
+	"status": 1
+}
+
+
+]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="order_id" ><![CDATA["w" ++ " " ++ now()]]></ee:set-variable>
+				<ee:set-variable variableName="product_id" ><![CDATA[attributes.queryParams.product_id]]></ee:set-variable>
+				<ee:set-variable variableName="note" ><![CDATA[attributes.queryParams.note]]></ee:set-variable>
+				<ee:set-variable variableName="comments" ><![CDATA[payload.comments]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="ebdedaae-e520-40ad-aa86-398d45cc27c7" name="walia-ecommerce-order-managementSub_Flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="a9acb6b7-51e5-4c51-bfa1-eddfb1a88a53" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Your order is processed successfully! You can continue to payment"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="walia-ecommerce-payment" doc:id="4d27c9fb-39cd-49f1-a5d2-444b5bfa8502" >
+		<http:listener doc:name="Listener" doc:id="51f9557b-e15f-41d5-b774-8f3657267522" config-ref="walia-ecommerce-httpListenerConfig" path="/api/pay" allowedMethods="POST"/>
+		<ee:transform doc:name="Transform Message" doc:id="bbcd8e6f-8a50-47c7-84d7-4e2001f77ffb">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="invoice_id"><![CDATA[floor((random()*1000000000000) as Number)]]></ee:set-variable>
+				<ee:set-variable variableName="order_id"><![CDATA[attributes.queryParams.order_id]]></ee:set-variable>
+				<ee:set-variable variableName="user_id" ><![CDATA[attributes.queryParams.user_id]]></ee:set-variable>
+				<ee:set-variable variableName="amount" ><![CDATA[attributes.queryParams.amount]]></ee:set-variable>
+				<ee:set-variable variableName="numb" ><![CDATA[attributes.queryParams.numb]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<http:request method="GET" doc:name="Request" doc:id="4d8e1784-890c-4a4f-ba5e-c6dee5b4ff25" path="/rates/latest" config-ref="HTTP_Request_configuration">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"symbols" : "ETB",
+	"apikey" : "7957fca899574c3cab77cf696b9fbeea"
+}]]]></http:query-params>
+		</http:request>
+		<set-variable value="#[floor(payload.rates.ETB as Number)]" doc:name="Set Variable" doc:id="a427e4eb-20ec-4838-a554-b9c3c53ba93e" variableName="birr"/>
+		<flow-ref doc:name="Flow Reference" doc:id="de4b3bc8-766f-4d90-b751-a700d79a2057" name="walia-ecommerce-payment-Sub_Flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="e9134417-e63b-4005-8b66-dedc8ea27612" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Your payment is processed successfully!"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="walia-ecommerce-scheduled-invoice-to-file-write" doc:id="a2e28155-f40f-4b6e-9e1e-71aa22488f63" >
+		<scheduler doc:name="Scheduler" doc:id="d5ca9433-1ae9-4808-9675-c003048db16a" >
+			<scheduling-strategy >
+				<cron expression="0 0 0 ? * 6 *" />
+			</scheduling-strategy>
+		</scheduler>
+		<db:select doc:name="Select" doc:id="416e1008-19ef-4484-b899-cf2e6c2e6eaa" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[select * from invoices]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="33dda003-ff52-40b3-86d0-539a6b26b3a3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<file:write doc:name="Write" doc:id="70e42aa3-1670-44af-90a7-abba151262b4" path="#['walia-' ++ (now() as String {format:'yyyy-MM-dd-hh-mm-ss'} ) ++ '.json']" config-ref="File_Config"/>
+		<logger level="INFO" doc:name="Logger" doc:id="3e886110-3ab8-4aef-8663-95aec25d8cc0" message="----------- Successfully write the invoices to our file server -----------"/>
+	</flow>
+	<flow name="walia-ecommerce-execute-script" doc:id="c224e829-84ee-49f9-948b-2ceb082e1f43" >
+		<http:listener doc:name="Listener" doc:id="bbee440a-b787-4549-9092-0aeccd09ff9b" config-ref="walia-ecommerce-httpListenerConfig" path="/executeScript"/>
+		<db:execute-script doc:name="Execute script" doc:id="fd7170c3-fe54-4d1a-a2aa-1753d92d8dd1" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[DROP DATABASE IF EXISTS `waliaecommerce`;
+CREATE DATABASE `waliaecommerce`;
+USE `waliaecommerce`;
+
+CREATE TABLE `products` (
+  `product_id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `quantity_in_stock` int(11) NOT NULL,
+  `unit_price` double NOT NULL,
+  PRIMARY KEY (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+
+CREATE TABLE `shippers` (
+  `shipper_id` smallint(6) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  PRIMARY KEY (`shipper_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+INSERT INTO `shippers` (`name`) VALUES ('Walia Express');
+INSERT INTO `shippers` (`name`) VALUES ('Craft Express');
+INSERT INTO `shippers` (`name`) VALUES ('UPS');
+INSERT INTO `shippers` (`name`) VALUES ('FedEx');
+INSERT INTO `shippers` (`name`) VALUES ('DHL');
+INSERT INTO `shippers` (`name`) VALUES ('USPS');
+
+
+CREATE TABLE `users` (
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(50) NOT NULL,
+  `last_name` varchar(50) NOT NULL,
+  `user_name` varchar(255) NOT NULL unique,
+  `password` varchar(255) NOT NULL,
+  `birth_date` date DEFAULT NULL,
+  `phone` varchar(50) DEFAULT NULL,
+  `email` varchar(255) NOT NULL unique,
+  `address` varchar(50) NOT NULL,
+  `role` ENUM('admin', 'user') NOT NULL DEFAULT 'user',
+  `points` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+
+CREATE TABLE `order_statuses` (
+  `order_status_id` tinyint(4) NOT NULL,
+  `order_status` ENUM('Pending','Processed', 'Shipped', 'Delivered') NOT NULL DEFAULT 'Pending',
+  PRIMARY KEY (`order_status_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+INSERT INTO `order_statuses` (`order_status_id`, `order_status`) VALUES (1, 'Pending');
+INSERT INTO `order_statuses` (`order_status_id`, `order_status`) VALUES (2, 'Processed');
+INSERT INTO `order_statuses` (`order_status_id`, `order_status`) VALUES (3, 'Shipped');
+INSERT INTO `order_statuses` (`order_status_id`, `order_status`) VALUES (4, 'Delivered');
+
+
+
+CREATE TABLE `orders` (
+  `order_id` varchar(255) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `order_date` date NOT NULL,
+  `status` tinyint(4) NOT NULL DEFAULT '1',
+  `comments` varchar(2000) DEFAULT NULL,
+  `shipped_date` date DEFAULT NULL,
+  `shipper_id` smallint(6) DEFAULT NULL,
+  PRIMARY KEY (`order_id`),
+  KEY `fk_orders_users_idx` (`user_id`),
+  KEY `fk_orders_shippers_idx` (`shipper_id`),
+  KEY `fk_orders_order_statuses_idx` (`status`),
+  CONSTRAINT `fk_orders_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_orders_order_statuses` FOREIGN KEY (`status`) REFERENCES `order_statuses` (`order_status_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_orders_shippers` FOREIGN KEY (`shipper_id`) REFERENCES `shippers` (`shipper_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE `order_items` (
+  `order_id` varchar(255) NOT NULL ,
+  `product_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `unit_price` double NOT NULL,
+  PRIMARY KEY (`order_id`,`product_id`),
+  KEY `fk_order_items_products_idx` (`product_id`),
+  CONSTRAINT `fk_order_items_orders` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_order_items_products` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE `order_item_notes` (
+  `note_id` INT NOT NULL AUTO_INCREMENT,
+  `order_id` varchar(255) NOT NULL,
+  `product_id` INT NOT NULL,
+  `note` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`note_id`));
+
+CREATE TABLE `payment_methods` (
+  `payment_method_id` tinyint(4) NOT NULL AUTO_INCREMENT,
+  `payment_method` ENUM('Credit Card', 'Stripe', 'PayPal', 'Direct Payment') NOT NULL DEFAULT 'Direct Payment',
+  PRIMARY KEY (`payment_method_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+INSERT INTO `payment_methods` (`payment_method`) VALUES ('Credit Card');
+INSERT INTO `payment_methods` (`payment_method`) VALUES ('Stripe');
+INSERT INTO `payment_methods` (`payment_method`) VALUES ('PayPal');
+INSERT INTO `payment_methods` (`payment_method`) VALUES ('Direct Payment');
+
+CREATE TABLE `invoices` (
+  `invoice_id` BIGINT NOT NULL,
+  `number` varchar(50) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `invoice_total` double NOT NULL,
+  `payment_total` double NOT NULL DEFAULT '0.00',
+  `invoice_date` date NOT NULL,
+  `due_date` date NOT NULL,
+  `payment_date` date DEFAULT NULL,
+  PRIMARY KEY (`invoice_id`),
+  KEY `FK_user_id` (`user_id`),
+  CONSTRAINT `FK_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `payments` (
+  `payment_id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `invoice_id` BIGINT NOT NULL,
+  `date` date NOT NULL,
+  `amount` double NOT NULL,
+  `payment_method` tinyint(4) NOT NULL,
+  PRIMARY KEY (`payment_id`),
+  KEY `fk_user_id_idx` (`user_id`),
+  KEY `fk_invoice_id_idx` (`invoice_id`),
+  KEY `fk_payment_payment_method_idx` (`payment_method`),
+  CONSTRAINT `fk_payment_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_payment_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `invoices` (`invoice_id`) ON UPDATE CASCADE,
+  CONSTRAINT `fk_payment_payment_method` FOREIGN KEY (`payment_method`) REFERENCES `payment_methods` (`payment_method_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;]]></db:sql>
+		</db:execute-script>
+		<ee:transform doc:name="Transform Message" doc:id="3586e681-32ea-4d28-a55b-d4dd8c787807" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "You successfully execute the script!"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

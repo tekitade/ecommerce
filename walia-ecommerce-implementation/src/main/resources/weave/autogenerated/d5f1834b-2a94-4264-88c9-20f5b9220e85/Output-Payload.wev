@@ -1,0 +1,10 @@
+%dw 2.0
+
+type auto_d5f1834b_2a94_4264_88c9_20f5b9220e85_Output_Payload = {
+  product_id?: Number, 
+  name: String, 
+  unit_price: Number, 
+  quantity_in_stock: Number, 
+  _?: Any
+}
+

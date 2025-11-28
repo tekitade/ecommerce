@@ -1,0 +1,11 @@
+%dw 2.0
+
+type auto_92efcb2c_1eea_492f_b6f9_20610d1acbde_Input_Payload = {|
+  user_id: Any, 
+  order_date: String {"format": "yyyy-MM-dd"}, 
+  status: Number, 
+  comments: Any, 
+  product_id: Any, 
+  note: Any
+|}
+

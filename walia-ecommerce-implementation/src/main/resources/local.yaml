@@ -1,0 +1,19 @@
+database:
+  host: "![v32oZUbPPl0aAaEoCDGxeg==]"
+  port: "![GW4gF/2hjHM=]"
+  username: "![us08+C1rjlY=]"
+  password: "![us08+C1rjlY=]"
+salesforce:
+  username: "![5f1I7DNp8OcJ4h8bGANZ70i21GonAuHB]"
+  password: "![lYqDHgceVHPvGFCjSHJOr9KGgIIdzX1O8nvs2q04tAM=]"
+  securityToken: "![Jx3GMs/h0P52/C5WPSpSAe5gzMwyQojtTEy30JpZ6Sc=]"
+email:
+  host: "![yEVB9JOTJnslHtruyDnuyA==]"
+  port: "![r7tmyVAwbEM=]"
+  username: "![zcBWwXNPke2rYN6dwadTptJ/Ho6ui7DBuev+DZo5ejE=]"
+  password: "![lYqDHgceVHPvGFCjSHJOr9KGgIIdzX1O8nvs2q04tAM=]"
+http:
+  host: "![v32oZUbPPl0aAaEoCDGxeg==]"
+  port: "![KP2Widem8MA=]"
+httprequest:
+  host: "![snQtQaerapULsO8VcIk83ttduESn6e2W]"

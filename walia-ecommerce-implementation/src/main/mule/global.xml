@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+	<db:config name="WaliaEcommerce_Database_Config" doc:name="Database Config" doc:id="135f58bb-2444-4159-b2bb-b0b2817c9fce" >
+		<db:my-sql-connection host="${secure::database.host}" port="${secure::database.port}" user="${secure::database.username}" password="${secure::database.password}" database="waliaecommerce"/>
+	</db:config>
+	<http:listener-config name="walia-ecommerce-httpListenerConfig" doc:name="HTTP Listener config" doc:id="a897f63c-ace5-4b01-92cf-793eb3c4132b" >
+		<http:listener-connection host="${secure::http.host}" port="${secure::http.port}" />
+	</http:listener-config>
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="598ff95e-4a70-4422-ae8f-e91631b0152d" >
+		<email:smtp-connection host="${secure::email.host}" user="${secure::email.username}" password="${secure::email.password}" port="${secure::email.port}">
+			<email:properties >
+				<email:property key="mail.smtp.starttls.enable" value="true" />
+			</email:properties>
+		</email:smtp-connection>
+	</email:smtp-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="4e21befc-fe82-4cdf-808d-61d723b13017" >
+		<salesforce:basic-connection username="${secure::salesforce.username}" password="${secure::salesforce.password}" securityToken="${secure::salesforce.securityToken}" />
+	</salesforce:sfdc-config>
+	<kafka:producer-config name="Apache_Kafka_Producer_configuration" doc:name="Apache Kafka Producer configuration" doc:id="64532cd1-3b83-4db8-8614-fffcfae69465" >
+		<kafka:producer-plaintext-connection >
+			<kafka:bootstrap-servers >
+				<kafka:bootstrap-server value="localhost:9092" />
+			</kafka:bootstrap-servers>
+		</kafka:producer-plaintext-connection>
+	</kafka:producer-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="b5cbb827-fc11-4559-b375-f365e823b196" basePath="/v2.0" >
+		<http:request-connection host="${secure::httprequest.host}" />
+	</http:request-config>
+	<global-property doc:name="Global Property" doc:id="61a43233-7150-4bca-8fca-98c27f0df14f" name="env" value="local" />
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="02a9dd0b-5d35-4889-a7d1-00eaf4975bd7" file="${env}.yaml" key="waliacoders" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<api-gateway:autodiscovery apiId="19616314" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="47978dbe-fd66-427e-a19c-f5ae1b515618" flowRef="walia-ecommerce-orders" />
+	<file:config name="File_Config" doc:name="File Config" doc:id="35a50894-d75c-40af-8b37-db48dcd33c21" >
+		<file:connection workingDir="C:\Users\craft\AnypointStudio\studio-workspace\walia-ecommerce\src\main\resources\walia-ecommerce" />
+	</file:config>
+	<jms:config name="JMS_Config" doc:name="JMS Config" doc:id="6eee5f21-e699-49a1-b533-c42fb0fe9b4e" >
+		<jms:active-mq-connection username="admin" password="admin" >
+			<jms:factory-configuration brokerUrl="tcp://localhost:61616" />
+		</jms:active-mq-connection>
+	</jms:config>
+</mule>

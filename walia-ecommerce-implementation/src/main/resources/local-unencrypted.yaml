@@ -1,0 +1,19 @@
+database:
+  host: "localhost"
+  port: "3306"
+  username: "root"
+  password: "root"
+salesforce:
+  username: "mintesnot@walia.coders"
+  password: "Gingerbread9@gingerbread"
+  securityToken: "3Tc3bqIrhgOkIJUhXGQwsrWsN"
+email:
+  host: "smtp.gmail.com"
+  port: "25"
+  username: "craftsoft.knowledge@gmail.com"
+  password: "Gingerbread9@gingerbread"
+http:
+  host: "localhost"
+  port: "8081"
+httprequest:
+  host: "api.currencyfreaks.com"

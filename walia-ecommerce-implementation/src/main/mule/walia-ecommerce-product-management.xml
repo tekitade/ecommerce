@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<flow name="walia-ecommerce-product-creation" doc:id="891442d2-aac5-4dee-ad98-cb31efb604ad" >
+		<scatter-gather doc:name="Scatter-Gather" doc:id="a5f20dd0-d92b-4310-9b17-0dc413ce397d">
+			<route >
+				<foreach doc:name="For Each" doc:id="df10a2cc-1b1c-4132-b003-8146fc1bb94a" batchSize="200">
+					<salesforce:create type="Product__c" doc:name="Create" doc:id="ad9df323-f4ff-4492-8aba-23cdda08a0fc" config-ref="Salesforce_Config">
+						<salesforce:records ><![CDATA[#[%dw 2.0
+output application/json
+---
+payload map ( {
+     "Name": $.name,
+     "quantity_in_stock__c": $.quantity_in_stock,
+     "unit_price__c": $.unit_price
+})]]]></salesforce:records>
+					</salesforce:create>
+				</foreach>
+			</route>
+			<route>
+				<until-successful maxRetries="5" doc:name="Until Successful" doc:id="d5dec1b8-5e24-4c40-904b-0301c42e29fc" millisBetweenRetries="10000">
+					<db:bulk-insert doc:name="Bulk insert" doc:id="c269ebbd-8116-4fd7-9823-9489e05973d0" config-ref="WaliaEcommerce_Database_Config">
+					<db:bulk-input-parameters><![CDATA[#[payload map ((item, index) -> {
+    "name": item.name,
+    "quantity_in_stock": item.quantity_in_stock,
+    "unit_price": item.unit_price
+})]]]></db:bulk-input-parameters>
+					<db:sql><![CDATA[insert into products (name, quantity_in_stock, unit_price) values (:name, :quantity_in_stock, :unit_price)]]></db:sql>
+				</db:bulk-insert>
+				</until-successful>
+			</route>
+		</scatter-gather>
+		<ee:transform doc:name="Transform Message" doc:id="d5c0b0a0-f7a9-4713-b7bd-bffd2aca749c">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "successfully added"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="db32e708-2048-4e93-9abb-54c905401f65" type="DB:BAD_SQL_SYNTAX, DB:QUERY_EXECUTION, DB:RETRY_EXHAUSTED">
+				<ee:transform doc:name="Transform Message" doc:id="f8561da5-af0f-4081-b375-fe9d734becc7" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Sorry! Please Try again the database server is not up at this time!"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="e51bb696-5a29-49d3-98ec-9a6cfd47ea03" type="SALESFORCE:COMMUNICATION, SALESFORCE:CONNECTIVITY, SALESFORCE:INSUFFICIENT_PERMISSIONS, SALESFORCE:INVALID_INPUT, SALESFORCE:INVALID_RESPONSE, SALESFORCE:LIMIT_EXCEEDED, SALESFORCE:MUTUAL_AUTHENTICATION_FAILED, SALESFORCE:NOT_FOUND, SALESFORCE:OPERATION_NOT_SUPPORTED, SALESFORCE:RETRY_EXHAUSTED, SALESFORCE:TIMEOUT, SALESFORCE:UNAVAILABLE">
+				<ee:transform doc:name="Transform Message" doc:id="3d4e2d69-55b6-4ed5-859e-696428360937" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Sorry! Please Try again salesforce server is not up at this time!"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="walia-ecommerce-product-update" doc:id="42bc1f43-9479-4faa-9537-dfb3055ff33a" >
+		<db:update doc:name="Update" doc:id="cf9efa1c-5c54-4405-aeb0-1d592fb936bb" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[update products set quantity_in_stock=:quantity_in_stock, unit_price=:unit_price, name=:name where product_id=:product_id;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"unit_price": payload.unit_price,
+	"quantity_in_stock": payload.quantity_in_stock,
+	"name": payload.name,
+	"product_id": vars.product_id
+}]]]></db:input-parameters>
+		</db:update>
+	</flow>
+	<sub-flow name="walia-ecommerce-product-retrieve" doc:id="39400322-8771-4d82-bde6-f09cbcecf8ad" >
+		<db:select doc:name="Select" doc:id="9692de7a-d5dd-411d-8b22-ae1bc28141d7" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[select * from products;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="4b3ce79a-c022-43c5-914f-9ff024c853b8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="walia-ecommerce-product-retrive-specific-products" doc:id="d5f1834b-2a94-4264-88c9-20f5b9220e85" >
+		<db:select doc:name="Select" doc:id="11e3d890-9503-46b0-b3ec-6b4b636c7b0a" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[select * from products where product_id = :product_id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	product_id: vars.product_id
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="d0b03068-cb56-49cd-960f-d6f28b5d8aa7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload[0]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="walia-ecommerce-product-delete" doc:id="efca9fbe-5be0-45a1-9098-c84056cef3b8" >
+		<db:delete doc:name="Delete" doc:id="d181033c-f061-4d67-aa67-95cfac69a591" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[delete from products where product_id = :product_id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	product_id: vars.product_id
+}]]]></db:input-parameters>
+		</db:delete>
+	</sub-flow>
+</mule>

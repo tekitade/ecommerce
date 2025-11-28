@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+	<sub-flow name="walia-ecommerce-order-managementSub_Flow" doc:id="92efcb2c-1eea-492f-b6f9-20610d1acbde" >
+		<db:insert doc:name="Insert" doc:id="093a2164-bf8f-46eb-b674-b76ae0bb5939" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[insert into orders (order_id, user_id, order_date, status, comments, shipper_id) values 
+(:order_id, :user_id, :order_date, :status,:comments, :shipper_id) ]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	order_id: vars.order_id,
+	user_id: payload.user_id,
+	order_date: payload.order_date,
+	status: payload.status,
+	comments: vars.comments,
+	shipper_id: 1
+}]]]></db:input-parameters>
+		</db:insert>
+		<db:select doc:name="Select" doc:id="2d0384bd-e810-42c6-8505-c1dde1dfb1c1" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[select * from products where product_id=:product_id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	product_id: vars.product_id
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="90b4a422-d622-4f3d-857b-fce1764d7390" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"quantity": payload[0].quantity_in_stock,
+	"unit_price": payload[0].unit_price
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:name="Insert" doc:id="23c1c0b1-e369-4079-ae7a-af8d02786d4c" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[insert into order_items values (:order_id, :product_id, :quantity, :unit_price)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	order_id: vars.order_id,
+	product_id: vars.product_id,
+	quantity: payload.quantity,
+	unit_price: payload.unit_price
+}]]]></db:input-parameters>
+		</db:insert>
+		<db:insert doc:name="Insert" doc:id="c2ebe5f4-7bf8-46d3-9fd4-cef309b6894e" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[insert into order_item_notes (order_id,product_id,note) values (:order_id, :product_id, :note)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	order_id: vars.order_id,
+	product_id: vars.product_id,
+	note: vars.note
+}]]]></db:input-parameters>
+		</db:insert>
+		<first-successful doc:name="First Successful" doc:id="67110853-4bc8-4a26-a395-ed89245b46b8" >
+			<route >
+				<jms:publish doc:name="Publish" doc:id="ae3f454e-bfd7-4866-9cb1-13131b4e2a49" destination="walia-ecommerce" config-ref="JMS_Config">
+					<jms:message >
+						<jms:body ><![CDATA[#[vars.comments]]]></jms:body>
+					</jms:message>
+				</jms:publish>
+			</route>
+			<route >
+				<kafka:publish doc:name="Publish" doc:id="559627ad-c76f-4da3-89bb-5c3ee7c9f0ff" topic="walia-ecommerce" config-ref="Apache_Kafka_Producer_configuration" key="#[vars.order_id]">
+			<kafka:message><![CDATA[#[vars.comments]]]></kafka:message>
+		</kafka:publish>
+			</route>
+		</first-successful>
+	</sub-flow>
+	<sub-flow name="walia-ecommerce-payment-Sub_Flow" doc:id="bfc8a0d7-6f2b-44f1-a633-1a65cf1b4647" >
+		<db:select doc:name="Select" doc:id="7a9869ca-41bb-4e2f-895b-cdbe7654b132" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[select * from invoices where user_id = :user_id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	user_id: vars.user_id
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="84221ab9-b476-4684-a2fa-7c097b48a030" >
+			<when expression="#[sizeOf(payload)==0]">
+				<db:insert doc:name="Insert" doc:id="401128a7-764e-4ba2-896a-05e119a8a0ec" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql><![CDATA[insert into invoices values (:invoice_id, :number, :user_id, :invoice_total, :payment_total, :invoice_date,:due_date, :payment_date)]]></db:sql>
+			<db:input-parameters><![CDATA[#[import tomorrow from dw::core::Dates
+---
+{
+	invoice_id: vars.invoice_id,
+    number: vars.numb,
+    user_id: vars.user_id,
+    invoice_total: vars.amount default 0 * vars.birr default 0,
+    payment_total: vars.amount default 0 * vars.birr default 0,
+    invoice_date: now() as String {format: "yyyy-MM-dd"},
+    due_date: tomorrow(),
+    payment_date: now() as String {format: "yyyy-MM-dd"}
+}]]]></db:input-parameters>
+		</db:insert>
+				<db:insert doc:name="Insert" doc:id="65f866ff-d172-4d0e-ac7f-578cfdbf921c" config-ref="WaliaEcommerce_Database_Config">
+					<db:sql ><![CDATA[insert payments (user_id, invoice_id, date, amount, payment_method) values (:user_id, :invoice_id, :date, :amount, :payment_method)]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	user_id: vars.user_id,
+	invoice_id: vars.invoice_id,
+	date: now() as String {format: "yyyy-MM-dd"},
+	amount: vars.amount default 0 * vars.birr default 0,
+	payment_method: 1
+}]]]></db:input-parameters>
+				</db:insert>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="0e3caf42-a261-46c3-bad2-97ae48e67071">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	invoice_total: payload[0].invoice_total,
+	payment_total: payload[0].payment_total,
+	invoice_id: payload[0].invoice_id
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="invoice_id_old" ><![CDATA[payload[0].invoice_id]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<db:update doc:name="Update" doc:id="960d6586-7323-4a60-854f-51f894ad6a4d" config-ref="WaliaEcommerce_Database_Config">
+					<db:sql ><![CDATA[update invoices set number=:number, invoice_total=:invoice_total, payment_total=:payment_total,invoice_date=:invoice_date, due_date=:due_date, payment_date=:payment_date where user_id = :user_id]]></db:sql>
+					<db:input-parameters ><![CDATA[#[import tomorrow from dw::core::Dates
+---
+{
+	invoice_id: payload.invoice_id,
+    number: vars.numb,
+    user_id: vars.user_id,
+    invoice_total: sum([(vars.amount default 0 * vars.birr default 0) as Number, payload.invoice_total as Number]),
+    payment_total: sum([(vars.amount default 0 * vars.birr default 0) as Number, payload.payment_total as Number]),
+    due_date: tomorrow(),
+    invoice_date: now() as String {format: "yyyy-MM-dd"},
+    payment_date: now() as String {format: "yyyy-MM-dd"}
+}]]]></db:input-parameters>
+				</db:update>
+				<db:insert doc:name="Insert" doc:id="af8c75c8-2528-42ec-8124-cd21051a1a74" config-ref="WaliaEcommerce_Database_Config">
+					<db:sql ><![CDATA[insert payments (user_id, invoice_id, date, amount, payment_method) values (:user_id, :invoice_id, :date, :amount, :payment_method)]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	user_id: vars.user_id,
+	invoice_id: vars.invoice_id_old,
+	date: now() as String {format: "yyyy-MM-dd"},
+	amount: (vars.amount default 0 * vars.birr default 0) as Number,
+	payment_method: 1
+}]]]></db:input-parameters>
+				</db:insert>
+			</otherwise>
+		</choice>
+	</sub-flow>
+</mule>

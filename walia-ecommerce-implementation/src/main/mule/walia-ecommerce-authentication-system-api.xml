@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<sub-flow name="walia-ecommerce-users-registration" doc:id="668b2eb0-5df8-4e1a-bbab-c28f595250e0" >
+		<try doc:name="Try" doc:id="6424c638-4be4-4901-a9e4-24562facdf9f" >
+			<validation:all doc:name="All" doc:id="28aca2e0-8da2-4463-9b6f-18442e5d3539">
+			<validation:is-email doc:name="Is email" doc:id="5b45f6f0-0072-4928-be65-9ba92bef57df" email="#[payload.email]" message="The email is not a valid email" />
+			<validation:is-not-null doc:name="Is not null" doc:id="a5e5a136-1f87-40dc-9992-489d9c5e383a" value="#[payload.user_name]" message="The user name must not be null" />
+			<validation:matches-regex doc:name="Matches regex" doc:id="40839210-361f-4c5f-ae5b-a6293913ba45" value="#[payload.phone]" message="The phone number must be a valid phone number. It must start with +251" regex="^\+251\d{9}$"/>
+		</validation:all>
+			<error-handler>
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="8e61059b-9d8d-4856-b914-2e19a4fe94f5" >
+					<ee:transform doc:name="Transform Message" doc:id="7c166b3b-5897-48c0-a591-67245a5a8733">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="11cc76e3-bd54-4e18-94d2-878abd41dcfe" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import dw::Crypto
+output application/json
+---
+{ 
+   "first_name": payload.first_name,
+   "last_name": payload.last_name,
+   "user_name": payload.user_name,
+   "password" : Crypto::MD5(payload.password as Binary),
+   "birth_date": payload.birth_date,
+   "phone": payload.phone,
+   "email": payload.email,
+   "address": payload.address
+ }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<try doc:name="Try" doc:id="87affe6a-60a5-4ae9-a383-642709445144" >
+			<scatter-gather doc:name="Scatter-Gather" doc:id="34d99a0d-d482-48b3-bf41-9745346278dd" >
+				<route >
+					<db:insert doc:name="Insert" doc:id="fe8852e4-b3d0-4c91-8aae-9f1d926ca8a3" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql><![CDATA[insert into users (first_name, last_name, user_name, password, birth_date, phone, email, address) values (:first_name, :last_name, :user_name, :password, :birth_date, :phone, :email, :address)]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	first_name: payload.first_name,
+	last_name: payload.last_name,
+	user_name: payload.user_name,
+	password: payload.password,
+	birth_date: payload.birth_date,
+	phone: payload.phone,
+	email: payload.email,
+	address: payload.address
+}]]]></db:input-parameters>
+		</db:insert>
+				</route>
+				<route >
+					<ee:transform doc:name="Transform Message" doc:id="6a18ed09-cae1-4bc4-b8cc-8cc23b17f700" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[
+   { 
+      "FirstName": payload.first_name,
+      "LastName": payload.last_name,
+      "Phone": payload.phone,
+      "Email": payload.email,
+      "Address": payload.address
+   }
+]]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<salesforce:create doc:name="Create" doc:id="4ef18d94-76f1-410b-a101-e2a0c0efc6af" config-ref="Salesforce_Config" type="Lead">
+					</salesforce:create>
+				</route>
+			</scatter-gather>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="6c7e7efa-a1c6-4d6a-83f7-a2e26a2973a0" type="DB:QUERY_EXECUTION">
+					<ee:transform doc:name="Transform Message" doc:id="b4de1c92-07f8-4727-8ff7-42946673aeb5" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+	</sub-flow>
+	<sub-flow name="walia-ecommerce-users-login" doc:id="0be768bd-5b42-4900-b35c-49f540ca7837" >
+		<ee:transform doc:name="Transform Message" doc:id="233fa420-687a-4bc0-a907-a01178e257dd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import dw::Crypto
+output application/json
+---
+{
+	"user_name": payload.user_name,
+	"password" : Crypto::MD5(payload.password as Binary)
+	}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:select doc:name="Select" doc:id="d73e0960-372c-4e05-b443-7ab7a3f5a21d" config-ref="WaliaEcommerce_Database_Config">
+			<db:sql ><![CDATA[select * from users where user_name = :user_name and password = :password;]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"user_name": payload.user_name,
+	"password": payload.password
+}]]]></db:input-parameters>
+		</db:select>
+		<try doc:name="Try" doc:id="a1a8b3ff-5dc3-43bd-acbf-680dc3406633" >
+			<choice doc:name="Choice" doc:id="8568c4bd-155b-42ae-8cdc-1bad60bdeb64">
+			<when expression="#[(sizeOf(payload))!=0]">
+				<ee:transform doc:name="Transform Message" doc:id="7ba1fdc2-f8f9-46da-94c3-6230cac03745">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "You are logged in successfully!"
+} as Object {encoding: "UTF-8", mediaType: "application/json"}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<raise-error doc:name="Raise error" doc:id="0db23112-1263-4a15-a1dc-876f6f7afe7d" type="LOGIN:ERROR" description="Username or Password is not correct" />
+			</otherwise>
+		</choice>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="dd4c1eeb-239c-489b-a61e-e200580dbe78" >
+					<ee:transform doc:name="Transform Message" doc:id="d02bac4f-b5cc-4d86-be56-cb93774e8b9b" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+	</sub-flow>
+</mule>

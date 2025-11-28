@@ -1,0 +1,12 @@
+[
+  {
+    "number": "123",
+    "invoice_total": 556957127819,
+    "user_id": 1,
+    "due_date": "2024-06-15",
+    "invoice_id": 556957127519,
+    "payment_total": 800,
+    "payment_date": "2024-06-14",
+    "invoice_date": "2024-06-14"
+  }
+]
